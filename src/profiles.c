@@ -10,15 +10,19 @@
 char* profileDir = "profiles"; // TODO: config option
 char* cuProfile = "CommunityUpdates";
 
-// count number of profiles. all strings and the array must be manually freed
-char** GetProfiles(int* out_count)
+// count number of profiles. caller must free return value using FreeProfiles
+ProfileList GetProfiles()
 {
-    *out_count = 0;
+    int length = 0;
     int check = CheckFile(profileDir);
     if (check == ENOENT)
     {
         mkdir(profileDir, 0777);
-        return NULL;
+        ProfileList result = {
+            .ptr = NULL,
+            .length = 0
+        };
+        return result;
     }
     else if (check != 0)
     {
@@ -34,17 +38,29 @@ char** GetProfiles(int* out_count)
     {
         if (ent->d_type == DT_DIR && strcmp(ent->d_name, ".") && strcmp(ent->d_name, ".."))
         {
-            dirs[*out_count] = malloc(strlen(ent->d_name) + 1);
-            strcpy(dirs[*out_count], ent->d_name);
-            (*out_count)++;
-            if (*out_count >= size)
+            dirs[length] = malloc(strlen(ent->d_name) + 1);
+            strcpy(dirs[length], ent->d_name);
+            length++;
+            if (length >= size)
             {
                 size *= 2;
                 dirs = realloc(dirs, size * sizeof(char*));
             }
         }
     }
-    return dirs;
+    ProfileList result = {
+        .ptr = dirs,
+        .length = length
+    };
+    return result;
+}
+
+void FreeProfiles(ProfileList list)
+{
+    for (int i = 0; i < list.length; i++) {
+        free(list.ptr[i]);
+    }
+    free(list.ptr);
 }
 
 // check if CU is installed
@@ -58,11 +74,8 @@ bool IsCUInstalled()
 
 int GetProfileCount()
 {
-    int count;
-    char** arr = GetProfiles(&count);
-    for (int i = 0; i < count; i++)
-        free(arr[i]);
-
-    free(arr);
+    ProfileList arr = GetProfiles();
+    int count = arr.length;
+    FreeProfiles(arr);
     return count;
 }

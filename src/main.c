@@ -29,6 +29,5 @@ int main()
 
     while (MainMenu()) {}
 
-    DestroyMenu();
     return 0;
 }
